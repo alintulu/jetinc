@@ -11,7 +11,8 @@
 #include "TMultiGraph.h"
 #include "TMath.h"
 
-//#include "tdrstyle_mod15.C"
+#include "settings.h"
+#include "tdrstyle_mod15.C"
 
 #include <vector>
 
@@ -31,6 +32,7 @@ void drawPlots() {
 
 void drawEtaSpectra() {
 
+        // Vector of eta ranges
 	vector<string> etas;
  	etas.push_back("Eta_0.0-0.5");
   	etas.push_back("Eta_0.5-1.0");
@@ -39,6 +41,7 @@ void drawEtaSpectra() {
   	etas.push_back("Eta_2.0-2.5");
   	etas.push_back("Eta_2.5-3.0");
 
+        // Eta labels for the graph 
 	map<string, string> label;
 	label["Eta_0.0-0.5"] = "       |y|<0.5 (#times10^{5})";
  	label["Eta_0.5-1.0"] = "0.5#leq|y|<1.0 (#times10^{4})";
@@ -47,6 +50,7 @@ void drawEtaSpectra() {
   	label["Eta_2.0-2.5"] = "2.0#leq|y|<2.5 (#times10)";
  	label["Eta_2.5-3.0"] = "2.5#leq|y|<3.0";
 
+        // Markers for the graph
 	map<string, int> marker;
 	marker["Eta_0.0-0.5"] = kFullCircle;
 	marker["Eta_0.5-1.0"] = kOpenCircle;
@@ -55,14 +59,6 @@ void drawEtaSpectra() {
 	marker["Eta_2.0-2.5"] = kFullTriangleDown;
 	marker["Eta_2.5-3.0"] = kOpenTriangleDown;
 
-	map<string, int> colour;
-	colour["jt370"] = kAzure-1;
-	colour["jt240"] = kOrange+8;	
-	colour["jt190"] = kCyan+1;
-	colour["jt150"] = kViolet-4;
-	colour["jt110"] = kPink-4;
-	colour["jt80"] = kGreen+2;
-	
 	double c = 10;
   	double scale[] = {pow(c,5),pow(c,4),pow(c,3),pow(c,2),pow(c,1),pow(c,0.)};
 
@@ -185,40 +181,45 @@ void drawJetsPerBin() {
 
 	bool _debug = false;
 
+        // Vector of trigger names
 	vector<string> trigger;
 	trigger.push_back("jt370");
 	trigger.push_back("jt240");
 	trigger.push_back("jt190");
-	trigger.push_back("jt150");
 	trigger.push_back("jt110");
-	trigger.push_back("jt80");
+	trigger.push_back("jt60");
+	trigger.push_back("jt30");
 
+        // Trigger labels for the graph
 	map<string, string> label;
 	label["jt370"] = "Jet370";
 	label["jt240"] = "Jet240";
 	label["jt190"] = "Jet190";
-	label["jt150"] = "Jet150";
 	label["jt110"] = "Jet110";
-	label["jt80"] = "Jet80";
+	label["jt60"] = "Jet60";
+	label["jt30"] = "Jet30";
 
-	map<string, int> marker;
-	marker["jt370"] = kOpenTriangleDown;
-	marker["jt240"] = kFullTriangleDown;
-	marker["jt190"] = kFullTriangleDown;
-	marker["jt150"] = kOpenTriangleDown;
-	marker["jt110"] = kFullTriangleDown;
-	marker["jt80"] = kOpenTriangleDown;
-
+        // Colour of the histograms
 	map<string, int> colour;
 	colour["jt370"] = kAzure-1;
 	colour["jt240"] = kOrange+8;	
 	colour["jt190"] = kViolet-4;
-	colour["jt150"] = kTeal+7;
-	colour["jt110"] = kPink-4;
-	colour["jt80"] = kCyan+3;
+	colour["jt110"] = kTeal+7;
+	colour["jt60"] = kPink-4;
+	colour["jt30"] = kCyan+3;
 
-	// contains bins with largest y-value per trigger
-	vector<int> range;
+        // Map of pT ranges for each trigger
+        std::map<std::string, std::pair<double, double>> _ptranges;
+
+        // Store pT ranges and their corresponding trigger in a map
+        for (int itrg = 0; itrg != _jp_ntrigger; ++itrg) {
+
+          std::string name = _jp_triggers[itrg];
+          double lower = _jp_trigranges[itrg][0];
+          double upper = _jp_trigranges[itrg][1];
+
+          _ptranges[name] = pair<double, double>(lower, upper);
+         }
 
 	// input file
 	TFile *f = new TFile("../outputs/output-DATA-2a.root","READ");
@@ -265,37 +266,25 @@ void drawJetsPerBin() {
 		}
 
 		npt->Multiply(lumi);
-		npt->SetMarkerStyle(marker[trigger[i]]);
+		npt->SetMarkerStyle(kFullTriangleDown);
 		npt->SetMarkerColor(colour[trigger[i]]);
 		npt->SetMarkerSize(1.25);
 
 		TH1D *on = (TH1D*)npt->Clone("on");
-		
-		// number of bins
-		int binsize = on->GetSize()-2;
 
-		// add last bin
-		if (i == 0) range.push_back(binsize);
+                // Find pT ranges for this trigger	
+	        double ptmin = _ptranges[trigger[i]].first;
+                double ptmax = _ptranges[trigger[i]].second;
 
-		// find bin with highest y-value (omit bins before 13)
-		int binmax = on->GetMaximumBin();
-		range.insert(range.begin(),binmax);
+                // Find bin corresponding to the pT value
+                Int_t binmin = on->GetXaxis()->FindBin(ptmin);	
+                Int_t binmax = on->GetXaxis()->FindBin(ptmax);	
 
-		if (_debug) {
-
-			cout << trigger[i] << endl;
-
-			cout << Form("	first bin: %1.2d = %1.2f GeV, last bin: %1.2d = %1.2f GeV", range[0], on->GetXaxis()->GetBinCenter(range[0]), range[1], on->GetXaxis()->GetBinCenter(range[1])) << endl;
-		
-			cout << Form("	binsize: %1.2d, binmax: %1.2d, xvalue: %1.2f GeV, yvalue: %1.2f", binsize, binmax, on->GetXaxis()->GetBinCenter(binmax), on->GetBinContent(binmax)) << endl; 
-
-		}
-	
-		on->GetXaxis()->SetRange(range[0],range[1]);
+		on->GetXaxis()->SetRange(binmin,binmax);
 
 		leg->AddEntry(npt, label[trigger[i]].c_str(), "p");
 
-		if (!strcmp(trigger[i].c_str(),"jt240") || !strcmp(trigger[i].c_str(),"jt190") || !strcmp(trigger[i].c_str(),"jt110")) {
+		if (!strcmp(trigger[i].c_str(),"jt240") || !strcmp(trigger[i].c_str(),"jt190") || !strcmp(trigger[i].c_str(),"jt60")) {
 			npt->SetFillColorAlpha(colour[trigger[i]], 0.35);
 			npt->SetLineColorAlpha(colour[trigger[i]], 0.35);
 			npt->Draw("hist same c");

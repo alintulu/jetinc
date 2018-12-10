@@ -1,0 +1,9 @@
+*~
+*.d
+*.so
+*.o
+*_cc_ACLiC_dict_rdict.pcm
+*_C_ACLiC_dict_rdict.pcm
+.__afs*
+*.tar.gz
+*.log

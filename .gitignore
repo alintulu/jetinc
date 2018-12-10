@@ -7,3 +7,7 @@
 .__afs*
 *.tar.gz
 *.log
+outputs/*
+!outputs/output-DATA-1.root
+!outputs/output-MC-1.root
+plots/*
